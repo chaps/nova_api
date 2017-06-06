@@ -7,7 +7,7 @@ setup(
     author_email="drumchaps@gmail.com",
     maintainer="Chaps",
     maintainer_email="drumchaps@gmail.com",
-    url="https://bitbucket.org/drumchaps/nova_api",
+    url="https://github.com/chaps/nova_api",
     packages=[
         "nova_api",
     ],
