@@ -32,6 +32,9 @@ nova.accounts
 nova.projects
 nova.technologies
 nova.employee_types
+# Your current activities and projects
+nova.my_activities
+nova.my_projects
 
 # Add a new activity
 novaapi.post_activity(6,14,comments="test_api")
