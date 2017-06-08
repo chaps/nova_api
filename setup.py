@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name="nova_api",
-    version="1.0.0",
+    version="1.0.1",
     author="Chaps",
     author_email="drumchaps@gmail.com",
     maintainer="Chaps",
@@ -12,5 +12,5 @@ setup(
         "nova_api",
     ],
     package_dir={'': 'src'},
-    install_requires=["requests", ]
+    install_requires=["requests", "pytest"]
 )

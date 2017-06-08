@@ -52,9 +52,25 @@ nova.delete_activity(new_activity["activityId"])
 nova.delete_activity_response.json()
 ```
 
+## Testing
 
 
+First you will need a pair of valid credentials for testing 
+against the service.
+- Clone the repo
+- Locate at the root of the repo.
 
+Create a file named _credentials.py under the test package 
+in it you will need to define your username and password.
+```
+# _credentials.py
+username = "yerusername"
+password = "yerpassword"
+```
+Run pytest for testing.
+```
+pytest
+```
 
 
 
