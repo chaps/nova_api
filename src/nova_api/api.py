@@ -3,13 +3,15 @@ import uuid
 import re
 import datetime
 from nova_exceptions import LoginFailed, GetTokenEndpointError, NotEnoughArguments
+from decorators import set_to_json_response, has_authentication_header, check_attr_response_type
 
 
 class NovaAPI(object):
     """Class with methods to interact with nova API via http requests.
     """
+    # noinspection SpellCheckingInspection
     client_id = "56cccded013d35a3949308d7"
-    acccess_token_pattern = re.compile("^.*access_token=(\w+)&.*")
+    access_token_pattern = re.compile("^.*access_token=(\w+)&.*")
     authorized_url = "http://nova.itexico.com/#/authorized/"
     login_url = "http://nova.cloudapp.net/login"
     authorization_url = "http://nova.cloudapp.net/authorization"
@@ -49,6 +51,7 @@ class NovaAPI(object):
         self.projects = None
         self.technologies = None
         self.employee_types = None
+        self.org_structures = None
         # Account specific set on build_info
         self.my_activities = None
         self.my_projects = None
@@ -62,11 +65,13 @@ class NovaAPI(object):
         self.accounts_response = None
         self.project_types_response = None
         self.project_statuses_response = None
+        self.employee_types_response = None
         self.activity_types_response = None
         self.activities_response = None
         self.projects_response = None
         self.project_assignments_response = None
         self.technologies_response = None
+        self.org_structures_response = None
         # Activity CUD responses.
         self.delete_activity_response = None
         self.post_activity_response = None
@@ -99,14 +104,14 @@ class NovaAPI(object):
             data=data,
             params=params
         )
-        if not self.authorization_url in self.login_response.url:
+        if self.authorization_url not in self.login_response.url:
             raise LoginFailed()
         pass
 
     def go_authorized(self):
-        """
-
-        :return:
+        """Makes an http request to be redirected to the authorization endpoint.
+        Assigns the response to the authorized_response attribute.
+        :return: None
         """
         params = {
             "response_type": "token",
@@ -120,11 +125,12 @@ class NovaAPI(object):
         )
         pass
 
+    @check_attr_response_type("login_response")
     def get_auth_token(self):
         """
         Sends the http request to obtain the endpoint in which the access token should be
          as a get parameter.
-        Sets the response in the get_token_response attribute.
+        Assigns the response to the get_token_response attribute.
         :return: None
         """
         params = {
@@ -142,10 +148,11 @@ class NovaAPI(object):
         )
         pass
 
+    @check_attr_response_type("get_token_response")
     def parse_token_response(self):
         """
         Obtains and sets the access_token from the get_token_response attribute endpoint (url)
-        Sets the access_token attribute to the obtained token.
+        Assigns the obtained token to the access_token attribute.
         Sets the Authorization HTTP header for bearer/token authentication in further requests.
         :return: None
         """
@@ -153,7 +160,7 @@ class NovaAPI(object):
         if not self.get_token_response.url.startswith(url_prefix):
             raise GetTokenEndpointError()
             pass
-        match = self.acccess_token_pattern.match(self.get_token_response.url)
+        match = self.access_token_pattern.match(self.get_token_response.url)
         self.access_token = match.groups()[0]
         self.ses.headers["Authorization"] = "bearer " + self.access_token
         pass
@@ -161,7 +168,7 @@ class NovaAPI(object):
     def login(self):
         """
         Calls all methods in order to login with the given credentials.
-        :return:
+        :return: None
         """
         self.post_login()
         self.go_authorized()
@@ -176,7 +183,7 @@ class NovaAPI(object):
         """
         Make the calls to set all
         attributes with the service's relevant information.
-        :return:
+        :return: None
         """
         self.get_project_types()
         self.set_project_types()
@@ -200,10 +207,11 @@ class NovaAPI(object):
         self.my_projects = self.project_assignments_response.json()
         pass
 
+    @has_authentication_header
     def get_profile(self):
         """
         Sends the http request to get the logged in user's profile.
-        Stores the response in the profile_response attribute.
+        Assigns the response to the profile_response attribute.
         :return: None
         """
         params = {
@@ -215,88 +223,107 @@ class NovaAPI(object):
         )
         pass
 
+    @check_attr_response_type("profile_response")
+    @set_to_json_response("profile", "profile_response")
     def set_profile(self):
         """
-        Sets the profile attribute to the JSON response from the profile_response
-        attribute.
+        Assigns the JSON response from the profile_response to the profile attribute.
         :return: None
         """
-        self.profile = self.profile_response.json()
         pass
 
+    @check_attr_response_type("profile_response")
     def set_profile_id(self):
         """
         Sets the profile id attribute based on the value from the id key
-        in the response obtained with the get_profile method.
+        in the response obtained in the get_profile method.
         :return: None
         """
         self.profile_id = self.profile_response.json()["id"]
         pass
 
+    @has_authentication_header
     def get_users(self):
         """
         Sends the http request to get a list of users.
-        Stores the response in the users_response attribute.
+        Assigns the response to the users_response attribute.
         :return: None
         """
         self.users_response = self.ses.get(self.users_url)
         pass
 
+    @check_attr_response_type("users_response")
+    @set_to_json_response("users", "users_response")
     def set_users(self):
         """
-        Sets the users attribute to the json array parsed from the
-         users_response attribute.
+        Assigns the json array parsed from the
+         users_response attribute to the users attribute.
         :return: None
         """
         self.users = self.users_response.json()
         pass
 
+    @has_authentication_header
     def get_accounts(self):
         """
         Sends the http request to get a list of accounts.
-        Stores the response in the accounts_response attribute.
+        Assigns the response to the accounts_response attribute.
         :return: None
         """
         self.accounts_response = self.ses.get(self.accounts_url)
         pass
 
+    @check_attr_response_type("accounts_response")
+    @set_to_json_response("accounts", "accounts_response")
     def set_accounts(self):
         """
-        Sets the accounts attribute to the json array parsed from the
-         users_response attribute.
+        Assigns the json array parsed from the
+         accounts_response attribute to the accounts attribute.
         :return: None
         """
-        self.accounts = self.users_response.json()
         pass
 
+    @has_authentication_header
     def get_projects(self):
-        """"""
+        """
+        Sends the http request to get a list of existing projects.
+        Assigns the response to the projects_response attribute.
+        :return: None
+        """
         self.projects_response = self.ses.get(self.projects_url)
         pass
 
+    @check_attr_response_type("projects_response")
+    @set_to_json_response("projects", "projects_response")
     def set_projects(self):
-        """"""
-        self.projects = self.projects_response.json()
+        """
+        Assigns the json parsed from the
+         projects_response attribute to the projects attribute.
+        :return: None
+        """
         pass
 
+    @has_authentication_header
     def get_project_types(self):
         """
         Sends the http request to get a list of project types.
-        Stores the response in the accounts_response attribute.
+        Assigns the response to the project_types_response attribute.
         :return: None
         """
         self.project_types_response = self.ses.get(self.project_types_url)
         pass
 
+    @check_attr_response_type("project_types_response")
+    @set_to_json_response("project_types", "project_types_response")
     def set_project_types(self):
         """
-        Sets the project_types attribute to the json array parsed from the
-         project_types_response attribute.
+        Assigns the json array parsed from the
+         project_types_response attribute to the project_types attribute.
         :return: None
         """
-        self.project_types = self.project_types_response.json()
         pass
 
+    @has_authentication_header
     def get_project_status(self):
         """
         Sends the http request to get a list of project status.
@@ -306,15 +333,17 @@ class NovaAPI(object):
         self.project_statuses_response = self.ses.get(self.project_statuses_url)
         pass
 
+    @check_attr_response_type("project_statuses_response")
+    @set_to_json_response("project_statuses", "project_statuses_response")
     def set_project_statuses(self):
         """
         Sets the project_statuses to the json array parsed from the
          project_statuses_response attribute.
         :return: None
         """
-        self.project_statuses = self.project_statuses_response.json()
         pass
 
+    @has_authentication_header
     def get_technologies(self):
         """
         Sends the http request to get a list of technologies.
@@ -324,66 +353,77 @@ class NovaAPI(object):
         self.technologies_response = self.ses.get(self.technologies_url)
         pass
 
+    @check_attr_response_type("technologies_response")
+    @set_to_json_response("technologies", "technologies_response")
     def set_technologies(self):
         """
         Sets the technologies attribute to the json array parsed from the
          technologies_response attribute.
         :return: None
         """
-        self.technologies = self.technologies_response.json()
         pass
 
+    @has_authentication_header
     def get_activity_types(self):
         """
         Sends the http request to get a list of activity types.
-        Stores the response in the activity_types_response attribute.
+        Assigns the response to the activity_types_response attribute.
         :return: None
         """
         self.activity_types_response = self.ses.get(self.activity_types_url)
         pass
 
+    @check_attr_response_type("activity_types_response")
+    @set_to_json_response("activity_types", "activity_types_response")
     def set_activity_types(self):
         """
-        Sets the activity_types attribute to the json array parsed from the
-         activity_types_response attribute.
+        Assigns the json array parsed from the activity_types_response attribute
+        to the activity_types attribute.
         :return: None
         """
-        self.activity_types = self.activity_types_response.json()
         pass
 
+    @has_authentication_header
     def get_org_structures(self):
         """
-        Sends the http request to get a list of activity types.
-        Stores the response in the activity_types_response attribute.
+        Sends the http request to get a list of organization structures.
+        Stores the response in the org_structures_response attribute.
         :return: None
         """
         self.org_structures_response = self.ses.get(self.org_structures_url)
         pass
 
+    @check_attr_response_type("org_structures_response")
+    @set_to_json_response("org_structures", "org_structures_response")
     def set_org_structures(self):
         """
+        Assigns the json array parsed from the org_structures_response attribute
+        to the org_structures attribute.
         :return: None
         """
-        self.org_structures = self.org_structures_response.json()
         pass
 
+    @has_authentication_header
     def get_employee_types(self):
         """
-
+        Sends the http request to get a list of employee types.
+        Stores the response in the employee_types_response attribute.
         :return: None
         """
-        self.employee_types = self.ses.get(self.employee_types_url)
+        self.employee_types_response = self.ses.get(self.employee_types_url)
         pass
 
+    @check_attr_response_type("employee_types_response")
+    @set_to_json_response("employee_types", "employee_types_response")
     def set_employee_types(self):
         """
-        Sends the http request to get a list of employee_types assigned to employees.
-        Sets the result to employee_types attribute.
+        Sets the employee_types attribute to the json array parsed from the
+         employee_types_response attribute.
         :return: None
         """
-        self.employee_types = self.employee_types.json()
         pass
 
+    @has_authentication_header
     def get_project_assignments(self, params=None, employee_id=None):
         """
         Sends the http request to get project_assignments based on
@@ -400,7 +440,7 @@ class NovaAPI(object):
         if not employee_id:
             employee_id = self.profile["id"]
         if "filter" in params:
-            params["filter"] = params["filter"] % ( employee_id,)
+            params["filter"] %= (employee_id,)
         self.project_assignments_response = self.ses.get(
             self.project_assignments_url,
             params=params
@@ -411,29 +451,32 @@ class NovaAPI(object):
     # CRUD for activities.
     ###
 
-    def get_activities(self, params=None, userid=None):
+    @has_authentication_header
+    def get_activities(self, params=None, user_id=None):
         """
         Sends the http request to get a list of activites assigned to employees.
         Sets the result to activities_response attribute.
         :param params: dictionary
-        :param userid: integer
+        :param user_id: integer
         :return: None
         """
         if not params:
             params = {"filter": '{"where":{"employeeId": %d}}'}
-        if not userid:
-            userid = self.profile_id
+        if not user_id:
+            user_id = self.profile_id
         if "filter" in params:
-            params["filter"] = params["filter"] % (userid,)
+            params["filter"] %= (user_id,)
         self.activities_response = self.ses.get(
             self.activities_url,
             params=params
         )
 
+    @has_authentication_header
     def delete_activity(self, activity_id):
         """
-        Sends a request to delete an activity
-        :param activity_id:
+        Sends a request to delete an activity and assigns the response
+        to delete_activity_response attribute.
+        :param activity_id: The activity id
         :return: None
         """
         self.delete_activity_response = self.ses.delete(
@@ -442,6 +485,8 @@ class NovaAPI(object):
         # Returns JSON with "count" key set to 1
         pass
 
+    # noinspection SpellCheckingInspection
+    @has_authentication_header
     def post_activity(
         self,
         project_id,
@@ -479,6 +524,7 @@ class NovaAPI(object):
         )
         pass
 
+    @has_authentication_header
     def edit_activity(
             self,
             activity_id,
@@ -501,6 +547,7 @@ class NovaAPI(object):
             pass
         if value:
             data["value"] = value
+            # noinspection SpellCheckingInspection
             data["billablevalue"] = value
         if comments:
             data["comments"] = comments
@@ -514,4 +561,3 @@ class NovaAPI(object):
         pass
 
     pass
-
